@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package sparkchat
+
+message OpenSessionRequest {
+    // Saved client id.
+    // Will be assigned one in the response if leave this empty
+    optional string client_id = 1;
+}
+
+message OpenSessionResponse {
+    OpenSessionStatus status = 1;
+    // Error message. Empty if success
+    string error_message = 2;
+    // Assigned client id. One client can hold multiple client id
+    optional string client_id = 3;
+}
+
+message ChatRequest {
+    // Client id for identification
+    string client_id = 1;
+    // Chat session title
+    // A new chat session will be created if the title is not found
+    string chat_title = 2;
+    // Client chat message
+    string chat_message = 3;
+    // Additional params
+    optional ChatParams params = 4;
+}
+
+message ChatParams {
+    // The version of Spark API default using version 1
+    optional APIVersion api_version = 1;
+    // Number of chat records that should be keeped. 
+    // Leave blank for keeping all chat records (default)
+    optional int32 cut_histories = 2;
+    // Threshold of the generation decision in [0, 1] default 0.5
+    optional float temperature = 3;
+    // Max generation tokens default 2048
+    optional int32 max_tokens = 4;
+    // Max historical chats tokens. < 8192 default 8000
+    optional int32 max_history_tokens = 5;
+}
+
+message ChatResponse {
+    ChatStatus status = 1;
+    // Error message. Empty if success
+    string error_message = 2;
+    // The detail response
+    ChatDetails details = 3;
+}
+
+message ChatHistoryRequest {
+    // Client id for identification
+    string client_id = 1;
+    // Chat session title
+    // A new chat session will be created if the title is not found
+    string chat_title = 2;
+    // How many chat historical records
+    // Leave blank for full history
+    optional int32 count = 3;
+}
+
+message ChatHistoryResponse {
+    // Number of records
+    int32 records_count = 1;
+    // Details
+    repeated ChatDetails chat_records = 2;
+}
+
+message ChatDetails {
+    // Response timestamp in the format %m/%d/%Y, %H:%M:%S
+    string formatted_timestamp = 1;
+    // Response status code
+    int32 status_code = 2;
+    // Role 'user' or 'assistant'
+    string role = 3;
+    // Tokens spent on this chat
+    int32 tokens_spent = 4;
+    // Chat content
+    string content = 5;
+}
+
+enum OpenSessionStatus {
+    SESSION_STATUS_UNKNOWN = 0;
+    SESSION_STATUS_SUCCESS = 1;
+    SESSION_STATUS_ERROR = 2;
+}
+
+enum ChatStatus {
+    CHAT_STATUS_UNKNOWN = 0;
+    CHAT_STATUS_BEGIN = 1;
+    CHAT_STATUS_MIDDLE = 2;
+    CHAT_STATUS_END = 3;
+    CHAT_STATUS_ERROR = 4;
+}
+
+enum APIVersion {
+    VERSION_UNKNOWN = 0;
+    VERSION_1 = 1;
+    VERSION_2 = 2;
+}
+
+message RequestWrapper {
+    oneof payload {
+        OpenSessionRequest open_session_request = 1;
+        ChatRequest chat_request = 2;
+        ChatHistoryRequest chat_history_request = 3;
+    }
+}
+
+message ResponseWrapper {
+    oneof payload {
+        OpenSessionResponse open_session_response = 1;
+        ChatResponse chat_response = 2;
+        ChatHistoryResponse chat_history_response = 3;
+    }
+}
