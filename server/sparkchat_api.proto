@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package sparkchat
+package sparkchat;
 
 message OpenSessionRequest {
     // Saved client id.
