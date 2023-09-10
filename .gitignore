@@ -3,3 +3,5 @@ server/SparkApi.py
 server/test.py
 server/__pycache__
 server/sparkchat_api_pb2.py
+
+.DS_Store

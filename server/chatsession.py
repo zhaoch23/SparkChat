@@ -16,14 +16,11 @@ class ChatSession(object):
     """
     _chat_history: list[dict[str, datetime | str | int]]
 
-    _ws_params: Ws_Param
-
     _token_spent: int
 
     _lock: asyncio.Lock
 
-    def __init__(self, ws_param: Ws_Param) -> None:
-        self._ws_params = ws_param
+    def __init__(self) -> None:
         self._chat_history = []
         self._token_spent = 0
         self._lock = asyncio.Lock()
@@ -47,7 +44,7 @@ class ChatSession(object):
     def get_chat_history_length(self) -> int:
         return len(self._chat_history)
     
-    def get_chat_history_strings(self, length=-1) -> str:
+    def get_chat_history_strings(self) -> str:
         tmp = ""
 
         for msg in reversed(self._chat_history):
@@ -57,16 +54,24 @@ class ChatSession(object):
         
         return tmp[:-1]
     
-    def get_chat_history_simplified(self, length=-1) -> list[dict[str, str | int]]:
+    def get_chat_history_simplified(self) -> list[dict[str, str | int]]:
         records = self.get_chat_histories()
         for rec in records:
             rec["timestamp"] = rec["timestamp"].strftime("%m/%d/%Y, %H:%M:%S")
+
         return records
+    
+    def get_last_chat_history_simplified(self) -> dict[str, str | int]:
+        if len(self._chat_history) > 0:
+            rec = self._chat_history[-1].copy()
+        
+        rec["timestamp"] = rec["timestamp"].strftime("%m/%d/%Y, %H:%M:%S")
+        return rec
     
     def get_token_spent(self) -> int:
         return sum([msg["tokens"] for msg in self._chat_history])
 
-    def _prepair_prompts(self, user_msg, cut_histories) -> list[dict[str, str]]:
+    def _prepair_prompts(self, user_msg, cut_histories, max_history_tokens) -> list[dict[str, str]]:
         """
         This function will prepare the prompts for the generation
         with historical chat records
@@ -111,7 +116,9 @@ class ChatSession(object):
         msg["tokens"] = tokens
         self._chat_history.append(msg)
     
-    async def chat(self, user_msg, cut_histories=-1) -> str | None:
+    async def chat(self, user_msg: str, ws_params: Ws_Param,  
+                   generation_params, cut_histories: int=-1, 
+                   max_history_tokens: int=8000) -> dict | None:
         """ Chat with the AI. One chat at a time.
         """
         if self.is_closed():
@@ -125,22 +132,26 @@ class ChatSession(object):
             else:
                 self._add_chat_history(1, "user", user_msg)
 
-            questions = self._prepair_prompts(user_msg, cut_histories)
-            request = gen_params(self._ws_params.apppid, self._ws_params.domain, questions)
+            generation_params["domain"] = ws_params.domain
+            questions = self._prepair_prompts(user_msg, cut_histories, max_history_tokens)
+            request = gen_params(ws_params.apppid, questions, generation_params)
 
-            response = await send_message(self._ws_params.create_url, request)
+            response = await send_message(ws_params.create_url(), request)
 
             if response is None:
+                logging.error(f"Request time out with user msg: {user_msg}")
                 self._add_chat_history(-1, "assistant", "Error in request: Timed out!")
                 return None
             
             status, content, metadata = on_message(response)
 
             if status == -1: # Error code
-                self._add_chat_history(status, "assistant", content)
                 logging.error(f"Error in response: {content}")
+                self._add_chat_history(status, "assistant", content)
                 return None
             
             self._add_chat_history(status, "assistant", content, metadata["total_tokens"])
 
-            return content
+            rec = self.get_last_chat_history_simplified()
+
+            logging.info(f"Sueccesed request: {rec}")

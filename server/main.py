@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+logging.basicConfig(format='[%(asctime)s]: %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 if __name__ == "__main__":
     abspath = os.path.abspath(__file__)

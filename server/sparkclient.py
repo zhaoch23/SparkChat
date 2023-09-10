@@ -60,16 +60,10 @@ class Ws_Param(object):
         logging.info(f"Created the request url: {url}")
         return url
     
-def gen_params(appid, domain, questions: list[dict[str, str]], params=None) -> Any:
+def gen_params(appid, questions: list[dict[str, str]], params) -> Any:
     """
     通过appid和用户的提问来生成请参数
     """
-    if param is None:
-        param = {
-                "domain": domain,
-                "temperature": 0.5,
-                "max_tokens": 2048,
-            }
 
     data = {
         "header": {
